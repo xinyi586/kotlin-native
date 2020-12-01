@@ -73,7 +73,7 @@ fun create(project: Project): ExecutorService {
                 action.execute(execSpec)
                 with(execSpec) {
                     val qemu = if (platform.target === KonanTarget.LINUX_MIPS32) "qemu-mips" else "qemu-mipsel"
-                    val absoluteQemu = "$absoluteTargetToolchain/bin/$qemu"
+                    val absoluteQemu = "/usr/bin/$qemu"
                     val exe = executable
                     executable = absoluteQemu
                     args = listOf("-L", absoluteTargetSysRoot,
