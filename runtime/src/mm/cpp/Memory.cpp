@@ -54,6 +54,7 @@ extern "C" RUNTIME_NOTHROW OBJ_GETTER(AllocInstance, const TypeInfo* typeInfo) {
 
 extern "C" OBJ_GETTER(AllocArrayInstance, const TypeInfo* typeInfo, int32_t elements) {
     auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
+    RuntimeAssert(elements >= 0, "Cannot allocate an array with negative element count");
     auto* array = mm::Allocator::Instance().AllocateArray(threadData, typeInfo, elements);
     // `ObjHeader` and `ArrayHeader` are expected to be compatible.
     RETURN_OBJ(reinterpret_cast<ObjHeader*>(array));

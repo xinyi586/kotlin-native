@@ -60,7 +60,7 @@ public:
 
     ObjHeader* AllocateObject(ThreadData* threadData, const TypeInfo* typeInfo) noexcept;
 
-    ArrayHeader* AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, int32_t count) noexcept;
+    ArrayHeader* AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, uint32_t count) noexcept;
 
     ObjectInfo& GetObjectInfo(Block& block) noexcept;
 
@@ -76,6 +76,7 @@ private:
     Allocator() noexcept;
     ~Allocator();
 
+    // TODO: Use a thread-safe list.
     Block* root_ = nullptr;
 };
 
