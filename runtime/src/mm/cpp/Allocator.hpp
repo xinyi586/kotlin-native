@@ -28,13 +28,9 @@ public:
             return *this;
         }
 
-        bool operator==(const Iterator& rhs) const noexcept {
-            return block_ == rhs.block_;
-        }
+        bool operator==(const Iterator& rhs) const noexcept { return block_ == rhs.block_; }
 
-        bool operator!=(const Iterator& rhs) const noexcept {
-            return block_ != rhs.block_;
-        }
+        bool operator!=(const Iterator& rhs) const noexcept { return block_ != rhs.block_; }
 
     private:
         friend class Allocator;
