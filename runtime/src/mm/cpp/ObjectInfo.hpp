@@ -23,6 +23,8 @@ public:
 
     static ObjectInfo* FromMetaObjHeader(MetaObjHeader* metaObject) noexcept { return reinterpret_cast<ObjectInfo*>(metaObject); }
 
+    explicit ObjectInfo(TypeInfo* typeInfo) noexcept : typeInfo_(typeInfo) {}
+
     TypeInfo* Type() const { return typeInfo_; }
 
 private:

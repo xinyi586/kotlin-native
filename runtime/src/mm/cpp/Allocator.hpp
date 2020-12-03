@@ -24,6 +24,7 @@ public:
         Block& operator*() noexcept { return *block_; }
 
         Iterator& operator++() noexcept {
+            previousBlock_ = block_;
             block_ = NextBlock(*block_);
             return *this;
         }
@@ -35,8 +36,10 @@ public:
     private:
         friend class Allocator;
 
+        // Only valid for the first block and for `nullptr`
         explicit Iterator(Block* block) noexcept : block_(block) {}
 
+        Block* previousBlock_ = nullptr;
         Block* block_;
     };
 
@@ -47,7 +50,7 @@ public:
         Iterator begin() noexcept { return Iterator(owner_.FirstBlock()); }
         Iterator end() noexcept { return Iterator(nullptr); }
 
-        void Erase(Iterator& iterator) noexcept { return owner_.Erase(*iterator); }
+        void Erase(Iterator& iterator) noexcept { return owner_.Erase(iterator.previousBlock_, *iterator.block_); }
 
     private:
         Allocator& owner_;
@@ -59,7 +62,6 @@ public:
 
     ArrayHeader* AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, int32_t count) noexcept;
 
-    Block& GetBlock(ObjectInfo& objectInfo) noexcept;
     ObjectInfo& GetObjectInfo(Block& block) noexcept;
 
     Iterable Iter() noexcept { return Iterable(*this); }
@@ -69,10 +71,12 @@ private:
 
     Block* FirstBlock() noexcept;
     static Block* NextBlock(Block& block) noexcept;
-    void Erase(Block& block) noexcept;
+    void Erase(Block* previousBlock, Block& block) noexcept;
 
     Allocator() noexcept;
     ~Allocator();
+
+    Block* root_ = nullptr;
 };
 
 } // namespace mm
