@@ -51,14 +51,6 @@ void RestoreMemory(MemoryState*) {
     // TODO: Remove this function when legacy MM is gone.
 }
 
-RUNTIME_NOTHROW OBJ_GETTER(AllocInstance, const TypeInfo* type_info) {
-    RuntimeCheck(false, "Unimplemented");
-}
-
-OBJ_GETTER(AllocArrayInstance, const TypeInfo* type_info, int32_t elements) {
-    RuntimeCheck(false, "Unimplemented");
-}
-
 OBJ_GETTER(InitThreadLocalSingleton, ObjHeader** location, const TypeInfo* typeInfo, void (*ctor)(ObjHeader*)) {
     RuntimeCheck(false, "Unimplemented");
 }

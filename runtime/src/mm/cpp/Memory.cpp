@@ -5,6 +5,7 @@
 
 #include "Memory.h"
 
+#include "Allocator.hpp"
 #include "GlobalsRegistry.hpp"
 #include "ThreadData.hpp"
 #include "ThreadRegistry.hpp"
@@ -43,6 +44,19 @@ extern "C" MemoryState* InitMemory(bool firstRuntime) {
 
 extern "C" void DeinitMemory(MemoryState* state, bool destroyRuntime) {
     mm::ThreadRegistry::Instance().Unregister(FromMemoryState(state));
+}
+
+extern "C" RUNTIME_NOTHROW OBJ_GETTER(AllocInstance, const TypeInfo* typeInfo) {
+    auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
+    auto* object = mm::Allocator::Instance().AllocateObject(threadData, typeInfo);
+    RETURN_OBJ(object);
+}
+
+extern "C" OBJ_GETTER(AllocArrayInstance, const TypeInfo* typeInfo, int32_t elements) {
+    auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
+    auto* array = mm::Allocator::Instance().AllocateArray(threadData, typeInfo, elements);
+    // `ObjHeader` and `ArrayHeader` are expected to be compatible.
+    RETURN_OBJ(reinterpret_cast<ObjHeader*>(array));
 }
 
 extern "C" OBJ_GETTER(InitSingleton, ObjHeader** location, const TypeInfo* typeInfo, void (*ctor)(ObjHeader*)) {
