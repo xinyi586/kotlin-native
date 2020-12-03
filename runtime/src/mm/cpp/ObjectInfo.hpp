@@ -23,13 +23,13 @@ public:
 
     static ObjectInfo* FromMetaObjHeader(MetaObjHeader* metaObject) noexcept { return reinterpret_cast<ObjectInfo*>(metaObject); }
 
-    explicit ObjectInfo(TypeInfo* typeInfo) noexcept : typeInfo_(typeInfo) {}
+    explicit ObjectInfo(const TypeInfo* typeInfo) noexcept : typeInfo_(typeInfo) {}
 
-    TypeInfo* Type() const { return typeInfo_; }
+    const TypeInfo* Type() const { return typeInfo_; }
 
 private:
     // Must be the first to match `TypeInfo` layout.
-    TypeInfo* typeInfo_;
+    const TypeInfo* typeInfo_;
 };
 
 } // namespace mm
