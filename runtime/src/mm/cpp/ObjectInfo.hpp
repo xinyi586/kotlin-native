@@ -19,22 +19,18 @@ class ObjectInfo : private Pinned {
 public:
     // TODO: Hide MetaObjHeader conversions inside mm/Memory.cpp. This will require using
     // an abstraction over `ObjHeader` and `ArrayHeader`.
-    MetaObjHeader* ToMetaObjHeader() noexcept {
-        return reinterpret_cast<MetaObjHeader*>(this);
-    }
+    MetaObjHeader* ToMetaObjHeader() noexcept { return reinterpret_cast<MetaObjHeader*>(this); }
 
-    static ObjectInfo* FromMetaObjHeader(MetaObjHeader* metaObject) noexcept {
-        return reinterpret_cast<ObjectInfo*>(metaObject);
-    }
+    static ObjectInfo* FromMetaObjHeader(MetaObjHeader* metaObject) noexcept { return reinterpret_cast<ObjectInfo*>(metaObject); }
 
-    TypeInfo* type() const { return typeInfo_; }
+    TypeInfo* Type() const { return typeInfo_; }
 
 private:
     // Must be the first to match `TypeInfo` layout.
     TypeInfo* typeInfo_;
 };
 
-}
-}
+} // namespace mm
+} // namespace kotlin
 
 #endif // RUNTIME_MM_OBJECT_INFO_H
