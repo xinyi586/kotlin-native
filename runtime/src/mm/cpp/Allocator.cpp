@@ -22,11 +22,11 @@ ArrayHeader* mm::Allocator::AllocateArray(ThreadData* threadData, const TypeInfo
     RuntimeCheck(false, "Unimplemented");
 }
 
-mm::Allocator::Block& mm::Allocator::GetBlock(MetaObjHeader* metaObject) noexcept {
+mm::Allocator::Block& mm::Allocator::GetBlock(ObjectInfo& objectInfo) noexcept {
     RuntimeCheck(false, "Unimplemented");
 }
 
-MetaObjHeader* mm::Allocator::GetMetaObjHeader(Block& block) noexcept {
+mm::ObjectInfo& mm::Allocator::GetObjectInfo(Block& block) noexcept {
     RuntimeCheck(false, "Unimplemented");
 }
 
