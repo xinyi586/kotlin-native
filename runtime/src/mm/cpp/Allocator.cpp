@@ -12,43 +12,24 @@
 
 using namespace kotlin;
 
-// This is a weird class that doesn't know it's size at compile-time.
 class mm::Allocator::Block final : private Pinned {
 public:
-    // Allocate and initialize block.
-    template <typename... Args>
-    static Block& Create(Block* nextBlock, Args&&... args) noexcept {
-        auto allocationSize = sizeof(Block) + HeapObject::Sizeof(std::forward<Args>(args)...);
-        auto* block = new (konan::calloc(1, AlignUp(allocationSize, kObjectAlignment))) Block(std::forward<Args>(args)...);
-        return *block;
-    }
-
-    // Deinitialize and destroy `this`.
-    void Destroy(Block* previousBlock) noexcept {
-        if (previousBlock != nullptr) {
-            previousBlock->next_ = next_;
-        }
-        this->~Block();
-        konan::free(this);
-    }
-
-    HeapObject& GetHeapObject() noexcept { return *GetHeapObjectPlace(); }
-
-    Block* Next() const noexcept { return next_; }
+    explicit Block(Block* next) noexcept : next_(next) {}
+    ~Block() = default;
 
 private:
-    // Hide all the ways of constructing this class.
-    template <typename... Args>
-    explicit Block(Args&&... args) noexcept {
-        HeapObject::Create(GetHeapObjectPlace(), std::forward<Args>(args)...);
-    }
-
-    ~Block() { HeapObject::Destroy(GetHeapObjectPlace()); }
-
-    HeapObject* GetHeapObjectPlace() noexcept { return reinterpret_cast<HeapObject*>(this + 1); }
+    friend class Allocator;
 
     Block* next_ = nullptr;
 };
+
+namespace {
+
+HeapObject* GetHeapObjectPlace(mm::Allocator::Block* blockPlace) noexcept {
+    return reinterpret_cast<HeapObject*>(blockPlace + 1);
+}
+
+}
 
 // static
 mm::Allocator& mm::Allocator::Instance() noexcept {
@@ -56,19 +37,25 @@ mm::Allocator& mm::Allocator::Instance() noexcept {
 }
 
 ObjHeader* mm::Allocator::AllocateObject(ThreadData* threadData, const TypeInfo* typeInfo) noexcept {
-    auto& block = Block::Create(root_, typeInfo);
-    root_ = &block;
-    return block.GetHeapObject().GetObjHeader();
+    auto allocationSize = sizeof(Block) + HeapObject::Sizeof(std::forward<Args>(args)...);
+    void* location = konan::calloc(1, AlignUp(allocationSize, kObjectAlignment));
+    auto* block = new (location) Block(root_);
+    auto& heapObject = HeapObject::Create(GetHeapObjectPlace(block), std::forward<Args>(args)...);
+    root_ = block;
+    return heapObject.GetObjHeader();
 }
 
 ArrayHeader* mm::Allocator::AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, uint32_t count) noexcept {
-    auto& block = Block::Create(root_, typeInfo, count);
-    root_ = &block;
-    return block.GetHeapObject().GetArrayHeader();
+    auto allocationSize = sizeof(Block) + HeapObject::Sizeof(std::forward<Args>(args)...);
+    void* location = konan::calloc(1, AlignUp(allocationSize, kObjectAlignment))
+    auto* block = new (location) Block(root_);
+    auto& heapObject = HeapObject::Create(GetHeapObjectPlace(block), std::forward<Args>(args)...);
+    root_ = block;
+    return heapObject.GetArrayHeader();
 }
 
 mm::HeapObject& mm::Allocator::GetHeapObject(Block& block) noexcept {
-    return block.GetHeapObject();
+    return *GetHeapObjectPlace(&block);
 }
 
 mm::Allocator::Allocator() noexcept = default;
@@ -84,5 +71,7 @@ mm::Allocator::Block* mm::Allocator::NextBlock(Block& block) noexcept {
 }
 
 void mm::Allocator::Erase(Block* previousBlock, Block& block) noexcept {
-    block.Destroy(previousBlock);
+    HeapObject::Destroy(GetHeapObjectPlace(&block));
+    previousBlock->next_ = block.next_;
+    block.~Block();
 }
