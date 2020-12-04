@@ -38,20 +38,6 @@ ALWAYS_INLINE mm::ThreadData* GetThreadData(MemoryState* state) {
 
 } // namespace
 
-
-// static
-MetaObjHeader* ObjHeader::createMetaObject(TypeInfo** location) {
-    TypeInfo* typeInfo = *location;
-    RuntimeCheck(!hasPointerBits(typeInfo, OBJECT_TAG_MASK), "Object must not be tagged");
-
-    RuntimeCheck(false, "Unimplemented");
-}
-
-// static
-void ObjHeader::destroyMetaObject(TypeInfo** location) {
-    RuntimeCheck(false, "Unimplemented");
-}
-
 extern "C" MemoryState* InitMemory(bool firstRuntime) {
     return ToMemoryState(mm::ThreadRegistry::Instance().RegisterCurrentThread());
 }
