@@ -5,24 +5,12 @@
 
 #include "Allocator.hpp"
 
+#include "Alignment.hpp"
 #include "GlobalData.hpp"
 #include "HeapObject.hpp"
 #include "Porting.h"
-#include "Types.h"
 
 using namespace kotlin;
-
-namespace {
-
-constexpr uint32_t kObjectAlignment = 8;
-static_assert(kObjectAlignment % alignof(KLong) == 0, "");
-static_assert(kObjectAlignment % alignof(KDouble) == 0, "");
-
-uint32_t AlignUp(uint32_t size, uint32_t alignment) {
-    return (size + alignment - 1) & ~(alignment - 1);
-}
-
-} // namespace
 
 // This is a weird class that doesn't know it's size at compile-time.
 class mm::Allocator::Block final : private Pinned {
@@ -55,13 +43,9 @@ private:
         HeapObject::Create(GetHeapObjectPlace(), std::forward<Args>(args)...);
     }
 
-    ~Block() {
-        HeapObject::Destroy(GetHeapObjectPlace());
-    }
+    ~Block() { HeapObject::Destroy(GetHeapObjectPlace()); }
 
-    HeapObject* GetHeapObjectPlace() noexcept {
-        return reinterpret_cast<HeapObject*>(this + 1);
-    }
+    HeapObject* GetHeapObjectPlace() noexcept { return reinterpret_cast<HeapObject*>(this + 1); }
 
     Block* next_ = nullptr;
 };
