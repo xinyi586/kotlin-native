@@ -12,7 +12,7 @@
 namespace kotlin {
 namespace mm {
 
-class ObjectInfo;
+class HeapObject;
 class ThreadData;
 
 class Allocator : private Pinned {
@@ -62,7 +62,7 @@ public:
 
     ArrayHeader* AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, uint32_t count) noexcept;
 
-    ObjectInfo& GetObjectInfo(Block& block) noexcept;
+    HeapObject& GetHeapObject(Block& block) noexcept;
 
     Iterable Iter() noexcept { return Iterable(*this); }
 

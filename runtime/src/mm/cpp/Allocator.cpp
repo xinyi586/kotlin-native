@@ -6,7 +6,7 @@
 #include "Allocator.hpp"
 
 #include "GlobalData.hpp"
-#include "ObjectInfo.hpp"
+#include "HeapObject.hpp"
 #include "Porting.h"
 #include "Types.h"
 
@@ -55,38 +55,40 @@ public:
     }
 
     ObjHeader* GetObjHeader() noexcept {
-        RuntimeAssert(!objectInfo_.Type()->IsArray(), "Must not be an array");
         // TODO: Consider more straightforward ways of extracting an object.
-        return reinterpret_cast<ObjHeader*>(this + 1);
+        auto* objHeader = reinterpret_cast<ObjHeader*>(this + 1);
+        RuntimeAssert(!objHeader->type_info()->IsArray(), "Must not be an array");
+        return objHeader;
     }
 
     ArrayHeader* GetArrayHeader() noexcept {
-        RuntimeAssert(objectInfo_.Type()->IsArray(), "Must be an array");
         // TODO: Consider more straightforward ways of extracting an array.
-        return reinterpret_cast<ArrayHeader*>(this + 1);
+        auto* arrayHeader = reinterpret_cast<ArrayHeader*>(this + 1);
+        RuntimeAssert(arrayHeader->type_info()->IsArray(), "Must be an array");
+        return arrayHeader;
     }
 
-    ObjectInfo& GetObjectInfo() noexcept { return objectInfo_; }
+    HeapObject& GetHeapObject() noexcept { return heapObject_; }
 
     Block* Next() const noexcept { return next_; }
 
 private:
     // Hide all the ways of constructing this class.
-    explicit Block(const TypeInfo* typeInfo) noexcept : objectInfo_(typeInfo) {
+    explicit Block(const TypeInfo* typeInfo) noexcept {
         auto* objHeader = GetObjHeader();
-        objHeader->typeInfoOrMeta_ = reinterpret_cast<TypeInfo*>(objectInfo_.ToMetaObjHeader());
+        objHeader->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
     }
 
-    Block(const TypeInfo* typeInfo, uint32_t count) noexcept : objectInfo_(typeInfo) {
+    Block(const TypeInfo* typeInfo, uint32_t count) noexcept {
         auto* arrayHeader = GetArrayHeader();
-        arrayHeader->typeInfoOrMeta_ = reinterpret_cast<TypeInfo*>(objectInfo_.ToMetaObjHeader());
+        arrayHeader->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
         arrayHeader->count_ = count;
     }
 
     ~Block() = default;
 
     Block* next_ = nullptr;
-    ObjectInfo objectInfo_;
+    HeapObject heapObject_;
     // The rest of the data is of variable size and so is inexpressible via C++ members. But it's here.
 };
 
@@ -107,8 +109,8 @@ ArrayHeader* mm::Allocator::AllocateArray(ThreadData* threadData, const TypeInfo
     return block.GetArrayHeader();
 }
 
-mm::ObjectInfo& mm::Allocator::GetObjectInfo(Block& block) noexcept {
-    return block.GetObjectInfo();
+mm::HeapObject& mm::Allocator::GetHeapObject(Block& block) noexcept {
+    return block.GetHeapObject();
 }
 
 mm::Allocator::Allocator() noexcept = default;
