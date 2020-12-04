@@ -22,7 +22,7 @@ public:
     static HeapObject& Create(HeapObject* location, const TypeInfo* typeInfo) noexcept;
     static HeapObject& Create(HeapObject* location, const TypeInfo* typeInfo, uint32_t count) noexcept;
 
-    ~HeapObject();
+    static void Destroy(HeapObject* location) noexcept;
 
     ObjHeader* GetObjHeader() noexcept;
     ArrayHeader* GetArrayHeader() noexcept;
@@ -31,6 +31,8 @@ private:
     // Hide all the ways of constructing this class on the stack.
     explicit HeapObject(const TypeInfo* typeInfo) noexcept;
     HeapObject(const TypeInfo* typeInfo, uint32_t count) noexcept;
+
+    ~HeapObject();
 };
 
 } // namespace mm

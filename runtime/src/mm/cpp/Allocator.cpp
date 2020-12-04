@@ -28,20 +28,10 @@ uint32_t AlignUp(uint32_t size, uint32_t alignment) {
 class mm::Allocator::Block final : private Pinned {
 public:
     // Allocate and initialize block.
-    static Block& CreateObject(Block* nextBlock, const TypeInfo* typeInfo) noexcept {
-        RuntimeAssert(!typeInfo->IsArray(), "Must not be an array");
-        // TODO: Consider more straightforward ways of allocating an object.
-        auto allocationSize = sizeof(Block) + typeInfo->instanceSize_;
-        auto* block = new (konan::calloc(1, AlignUp(allocationSize, kObjectAlignment))) Block(typeInfo);
-        return *block;
-    }
-
-    static Block& CreateArray(Block* nextBlock, const TypeInfo* typeInfo, uint32_t count) noexcept {
-        RuntimeAssert(typeInfo->IsArray(), "Must be an array");
-        // TODO: Consider more straightforward ways of allocating an array.
-        // Note: array body is aligned, but for size computation it is enough to align the sum.
-        auto allocationSize = sizeof(Block) + AlignUp(sizeof(ArrayHeader) - typeInfo->instanceSize_ * count, kObjectAlignment);
-        auto* block = new (konan::calloc(1, AlignUp(allocationSize, kObjectAlignment))) Block(typeInfo, count);
+    template <typename... Args>
+    static Block& Create(Block* nextBlock, Args&&... args) noexcept {
+        auto allocationSize = sizeof(Block) + HeapObject::Sizeof(args...);
+        auto* block = new (konan::calloc(1, AlignUp(allocationSize, kObjectAlignment))) Block(std::forward<Args>(args)...);
         return *block;
     }
 
@@ -54,42 +44,26 @@ public:
         konan::free(this);
     }
 
-    ObjHeader* GetObjHeader() noexcept {
-        // TODO: Consider more straightforward ways of extracting an object.
-        auto* objHeader = reinterpret_cast<ObjHeader*>(this + 1);
-        RuntimeAssert(!objHeader->type_info()->IsArray(), "Must not be an array");
-        return objHeader;
-    }
-
-    ArrayHeader* GetArrayHeader() noexcept {
-        // TODO: Consider more straightforward ways of extracting an array.
-        auto* arrayHeader = reinterpret_cast<ArrayHeader*>(this + 1);
-        RuntimeAssert(arrayHeader->type_info()->IsArray(), "Must be an array");
-        return arrayHeader;
-    }
-
-    HeapObject& GetHeapObject() noexcept { return heapObject_; }
+    HeapObject& GetHeapObject() noexcept { return *GetHeapObjectPlace(); }
 
     Block* Next() const noexcept { return next_; }
 
 private:
     // Hide all the ways of constructing this class.
-    explicit Block(const TypeInfo* typeInfo) noexcept {
-        auto* objHeader = GetObjHeader();
-        objHeader->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
+    template <typename... Args>
+    explicit Block(Args&&... args) noexcept {
+        HeapObject::Create(GetHeapObjectPlace(), std::forward<Args>(args)...);
     }
 
-    Block(const TypeInfo* typeInfo, uint32_t count) noexcept {
-        auto* arrayHeader = GetArrayHeader();
-        arrayHeader->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
-        arrayHeader->count_ = count;
+    ~Block() {
+        HeapObject::Destroy(GetHeapObjectPlace());
     }
 
-    ~Block() = default;
+    HeapObject* GetHeapObjectPlace() noexcept {
+        return reinterpret_cast<HeapObject*>(this + 1);
+    }
 
     Block* next_ = nullptr;
-    HeapObject heapObject_;
-    // The rest of the data is of variable size and so is inexpressible via C++ members. But it's here.
 };
 
 // static
@@ -98,15 +72,15 @@ mm::Allocator& mm::Allocator::Instance() noexcept {
 }
 
 ObjHeader* mm::Allocator::AllocateObject(ThreadData* threadData, const TypeInfo* typeInfo) noexcept {
-    auto& block = Block::CreateObject(root_, typeInfo);
+    auto& block = Block::Create(root_, typeInfo);
     root_ = &block;
-    return block.GetObjHeader();
+    return block.GetHeapObject().GetObjHeader();
 }
 
 ArrayHeader* mm::Allocator::AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, uint32_t count) noexcept {
-    auto& block = Block::CreateArray(root_, typeInfo, count);
+    auto& block = Block::Create(root_, typeInfo, count);
     root_ = &block;
-    return block.GetArrayHeader();
+    return block.GetHeapObject().GetArrayHeader();
 }
 
 mm::HeapObject& mm::Allocator::GetHeapObject(Block& block) noexcept {

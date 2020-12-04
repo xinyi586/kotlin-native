@@ -46,8 +46,10 @@ mm::HeapObject& mm::HeapObject::Create(HeapObject* location, const TypeInfo* typ
     return *heapObject;
 }
 
-mm::HeapObject::~HeapObject() {
-    RuntimeCheck(false, "Unimplemented");
+// static
+void mm::HeapObject::Destroy(HeapObject* location) noexcept {
+    // Always placement new allocated, so enough to call the destructor.
+    location->~HeapObject();
 }
 
 ObjHeader* mm::HeapObject::GetObjHeader() noexcept {
@@ -73,4 +75,8 @@ mm::HeapObject::HeapObject(const TypeInfo* typeInfo, uint32_t count) noexcept {
     auto* arrayHeader = GetArrayHeader();
     arrayHeader->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
     arrayHeader->count_ = count;
+}
+
+mm::HeapObject::~HeapObject() {
+    RuntimeCheck(false, "Unimplemented");
 }
