@@ -47,15 +47,15 @@ extern "C" void DeinitMemory(MemoryState* state, bool destroyRuntime) {
 }
 
 extern "C" RUNTIME_NOTHROW OBJ_GETTER(AllocInstance, const TypeInfo* typeInfo) {
-    auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
-    auto* object = mm::Allocator::Instance().AllocateObject(threadData, typeInfo);
+    auto& heapObject = mm::Allocator::Instance().Allocate(typeInfo);
+    auto* object = heapObject.GetObjHeader();
     RETURN_OBJ(object);
 }
 
 extern "C" OBJ_GETTER(AllocArrayInstance, const TypeInfo* typeInfo, int32_t elements) {
-    auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
     RuntimeAssert(elements >= 0, "Cannot allocate an array with negative element count");
-    auto* array = mm::Allocator::Instance().AllocateArray(threadData, typeInfo, elements);
+    auto& heapObject = mm::Allocator::Instance().Allocate(typeInfo, static_cast<uint32_t>(elements));
+    auto* array = heapObject.GetArrayHeader();
     // `ObjHeader` and `ArrayHeader` are expected to be compatible.
     RETURN_OBJ(reinterpret_cast<ObjHeader*>(array));
 }

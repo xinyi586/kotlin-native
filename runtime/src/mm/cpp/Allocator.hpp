@@ -6,18 +6,29 @@
 #ifndef RUNTIME_MM_ALLOCATOR_H
 #define RUNTIME_MM_ALLOCATOR_H
 
+#include "Alignment.hpp"
+#include "HeapObject.hpp"
 #include "Memory.h"
+#include "Porting.h"
 #include "Utils.hpp"
 
 namespace kotlin {
 namespace mm {
 
-class HeapObject;
 class ThreadData;
 
 class Allocator : private Pinned {
 public:
-    class Block;
+    class Block final : private Pinned {
+    public:
+        explicit Block(Block* next) noexcept : next_(next) {}
+        ~Block() = default;
+
+    private:
+        friend class Allocator;
+
+        Block* next_ = nullptr;
+    };
 
     class Iterator {
     public:
@@ -25,7 +36,7 @@ public:
 
         Iterator& operator++() noexcept {
             previousBlock_ = block_;
-            block_ = NextBlock(*block_);
+            block_ = block_->next_;
             return *this;
         }
 
@@ -47,7 +58,7 @@ public:
     public:
         explicit Iterable(Allocator& owner) : owner_(owner) {}
 
-        Iterator begin() noexcept { return Iterator(owner_.FirstBlock()); }
+        Iterator begin() noexcept { return Iterator(owner_.root_); }
         Iterator end() noexcept { return Iterator(nullptr); }
 
         void Erase(Iterator& iterator) noexcept { return owner_.Erase(iterator.previousBlock_, *iterator.block_); }
@@ -58,9 +69,15 @@ public:
 
     static Allocator& Instance() noexcept;
 
-    ObjHeader* AllocateObject(ThreadData* threadData, const TypeInfo* typeInfo) noexcept;
-
-    ArrayHeader* AllocateArray(ThreadData* threadData, const TypeInfo* typeInfo, uint32_t count) noexcept;
+    template <typename... Args>
+    HeapObject& Allocate(Args... args) noexcept {
+        auto allocationSize = sizeof(Block) + HeapObject::Sizeof(std::forward<Args>(args)...);
+        void* location = konan::calloc(1, AlignUp(allocationSize, kObjectAlignment));
+        auto* block = new (location) Block(root_);
+        auto& heapObject = HeapObject::Create(GetHeapObjectPlace(block), std::forward<Args>(args)...);
+        root_ = block;
+        return heapObject;
+    }
 
     HeapObject& GetHeapObject(Block& block) noexcept;
 
@@ -69,8 +86,7 @@ public:
 private:
     friend class GlobalData;
 
-    Block* FirstBlock() noexcept;
-    static Block* NextBlock(Block& block) noexcept;
+    HeapObject* GetHeapObjectPlace(Block* blockPlace) noexcept;
     void Erase(Block* previousBlock, Block& block) noexcept;
 
     Allocator() noexcept;
