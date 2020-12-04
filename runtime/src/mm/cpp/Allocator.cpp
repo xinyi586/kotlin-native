@@ -30,7 +30,7 @@ public:
     // Allocate and initialize block.
     template <typename... Args>
     static Block& Create(Block* nextBlock, Args&&... args) noexcept {
-        auto allocationSize = sizeof(Block) + HeapObject::Sizeof(args...);
+        auto allocationSize = sizeof(Block) + HeapObject::Sizeof(std::forward<Args>(args)...);
         auto* block = new (konan::calloc(1, AlignUp(allocationSize, kObjectAlignment))) Block(std::forward<Args>(args)...);
         return *block;
     }
