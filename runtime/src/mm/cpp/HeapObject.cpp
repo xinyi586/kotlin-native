@@ -5,21 +5,9 @@
 
 #include "HeapObject.hpp"
 
-#include "Types.h"
+#include "Alignment.hpp"
 
 using namespace kotlin;
-
-namespace {
-
-constexpr uint32_t kObjectAlignment = 8;
-static_assert(kObjectAlignment % alignof(KLong) == 0, "");
-static_assert(kObjectAlignment % alignof(KDouble) == 0, "");
-
-uint32_t AlignUp(uint32_t size, uint32_t alignment) {
-    return (size + alignment - 1) & ~(alignment - 1);
-}
-
-} // namespace
 
 // static
 size_t mm::HeapObject::Sizeof(const TypeInfo* typeInfo) noexcept {
