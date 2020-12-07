@@ -52,7 +52,6 @@ fun create(project: Project): ExecutorService {
     val testTarget = project.testTarget
     val platform = platformManager.platform(testTarget)
     val absoluteTargetToolchain = platform.absoluteTargetToolchain
-    val absoluteTargetSysRoot = platform.absoluteTargetSysRoot
 
     return when (testTarget) {
         KonanTarget.WASM32 -> object : ExecutorService {
@@ -68,22 +67,10 @@ fun create(project: Project): ExecutorService {
             }
         }
 
-        KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 -> object : ExecutorService {
-            override fun execute(action: Action<in ExecSpec>): ExecResult? = project.exec { execSpec ->
-                action.execute(execSpec)
-                with(execSpec) {
-                    val qemu = if (platform.target === KonanTarget.LINUX_MIPS32) "qemu-mips" else "qemu-mipsel"
-                    val absoluteQemu = "/usr/bin/$qemu"
-                    val exe = executable
-                    executable = absoluteQemu
-                    args = listOf("-L", absoluteTargetSysRoot,
-                            // This is to workaround an endianess issue.
-                            // See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=731082 for details.
-                            "$absoluteTargetSysRoot/lib/ld.so.1", "--inhibit-cache",
-                            exe) + args
-                }
-            }
-        }
+        KonanTarget.LINUX_MIPS32,
+        KonanTarget.LINUX_MIPSEL32,
+        KonanTarget.LINUX_ARM64,
+        KonanTarget.LINUX_ARM32_HFP -> qemuExecutor(project)
 
         KonanTarget.IOS_X64,
         KonanTarget.TVOS_X64,
@@ -491,6 +478,34 @@ private fun deviceLauncher(project: Project) = object : ExecutorService {
         }
         check(result.exitValue == 0) { "Failed to start debug server: $out" }
         return out.toString()
+    }
+}
+
+private fun qemuExecutor(project: Project) = object : ExecutorService {
+    val platformManager = project.platformManager
+    val testTarget = project.testTarget
+    val platform = platformManager.platform(testTarget)
+    val absoluteTargetSysRoot = platform.absoluteTargetSysRoot
+    val qemuLocation = "/usr/bin"
+
+    override fun execute(action: Action<in ExecSpec>): ExecResult? = project.exec { execSpec ->
+        action.execute(execSpec)
+        with(execSpec) {
+            // This is to workaround an endianess issue.
+            // See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=731082 for details.
+            val mipsArgs = listOf("$absoluteTargetSysRoot/lib/ld.so.1", "--inhibit-cache")
+            val (qemu, targetSpecificArgs) = when (testTarget) {
+                KonanTarget.LINUX_MIPS32 -> "qemu-mips" to mipsArgs
+                KonanTarget.LINUX_MIPSEL32 -> "qemu-mipsel" to mipsArgs
+                KonanTarget.LINUX_ARM64 -> "qemu-aarch64" to emptyList()
+                KonanTarget.LINUX_ARM32_HFP -> "qemu-arm" to emptyList()
+                else -> error("Unsupported qemu target!")
+            }
+            val absoluteQemu = "$qemuLocation/$qemu"
+            val exe = executable
+            executable = absoluteQemu
+            args = listOf("-L", absoluteTargetSysRoot, exe) + targetSpecificArgs + args
+        }
     }
 }
 
