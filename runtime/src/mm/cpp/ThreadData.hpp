@@ -8,6 +8,7 @@
 
 #include <pthread.h>
 
+#include "Allocator.hpp"
 #include "GlobalsRegistry.hpp"
 #include "ThreadLocalStorage.hpp"
 #include "Utils.hpp"
@@ -19,7 +20,8 @@ namespace mm {
 // Pin it in memory to prevent accidental copying.
 class ThreadData final : private Pinned {
 public:
-    ThreadData(pthread_t threadId) noexcept : threadId_(threadId), globalsThreadQueue_(GlobalsRegistry::Instance()) {}
+    ThreadData(pthread_t threadId) noexcept :
+        threadId_(threadId), globalsThreadQueue_(GlobalsRegistry::Instance()), allocatorThreadQueue_(Allocator::Instance()) {}
 
     ~ThreadData() = default;
 
@@ -29,10 +31,13 @@ public:
 
     ThreadLocalStorage& tls() noexcept { return tls_; }
 
+    Allocator::ThreadQueue& allocatorThreadQueue() noexcept { return allocatorThreadQueue_; }
+
 private:
     const pthread_t threadId_;
     GlobalsRegistry::ThreadQueue globalsThreadQueue_;
     ThreadLocalStorage tls_;
+    Allocator::ThreadQueue allocatorThreadQueue_;
 };
 
 } // namespace mm

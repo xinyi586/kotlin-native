@@ -45,6 +45,20 @@ extern "C" void DeinitMemory(MemoryState* state, bool destroyRuntime) {
     mm::ThreadRegistry::Instance().Unregister(FromMemoryState(state));
 }
 
+extern "C" RUNTIME_NOTHROW OBJ_GETTER(AllocInstance, const TypeInfo* typeInfo) {
+    auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
+    auto* object = threadData->allocatorThreadQueue().AllocateObject(typeInfo);
+    RETURN_OBJ(object);
+}
+
+extern "C" OBJ_GETTER(AllocArrayInstance, const TypeInfo* typeInfo, int32_t elements) {
+    RuntimeAssert(elements >= 0, "elements cannot be negative");
+    auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
+    auto* array = threadData->allocatorThreadQueue().AllocateArray(typeInfo, static_cast<uint32_t>(elements));
+    // `ArrayHeader` and `ObjHeader` are expected to be compatible.
+    RETURN_OBJ(reinterpret_cast<ObjHeader*>(array));
+}
+
 extern "C" OBJ_GETTER(InitSingleton, ObjHeader** location, const TypeInfo* typeInfo, void (*ctor)(ObjHeader*)) {
     auto* threadData = mm::ThreadRegistry::Instance().CurrentThreadData();
     // TODO: This should only be called if singleton is actually created here. It's possible that the

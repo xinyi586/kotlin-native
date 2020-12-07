@@ -6,6 +6,7 @@
 #ifndef RUNTIME_MM_GLOBAL_DATA_H
 #define RUNTIME_MM_GLOBAL_DATA_H
 
+#include "Allocator.hpp"
 #include "GlobalsRegistry.hpp"
 #include "ThreadRegistry.hpp"
 #include "Utils.hpp"
@@ -18,8 +19,9 @@ class GlobalData : private Pinned {
 public:
     static GlobalData& Instance() noexcept { return instance_; }
 
-    ThreadRegistry& threadRegistry() { return threadRegistry_; }
-    GlobalsRegistry& globalsRegistry() { return globalsRegistry_; }
+    ThreadRegistry& threadRegistry() noexcept { return threadRegistry_; }
+    GlobalsRegistry& globalsRegistry() noexcept { return globalsRegistry_; }
+    Allocator& allocator() noexcept { return allocator_; }
 
 private:
     GlobalData();
@@ -29,6 +31,7 @@ private:
 
     ThreadRegistry threadRegistry_;
     GlobalsRegistry globalsRegistry_;
+    Allocator allocator_;
 };
 
 } // namespace mm
