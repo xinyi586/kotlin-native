@@ -75,3 +75,6 @@ runtime/googletest/
 
 # code style
 !.idea/codeStyles/
+
+# ignore the project model created by CLion (for now).
+runtime/.idea
