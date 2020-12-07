@@ -11,6 +11,7 @@
 #include "GlobalsRegistry.hpp"
 #include "ThreadLocalStorage.hpp"
 #include "Utils.hpp"
+#include "ThreadState.hpp"
 
 namespace kotlin {
 namespace mm {
@@ -19,7 +20,10 @@ namespace mm {
 // Pin it in memory to prevent accidental copying.
 class ThreadData final : private Pinned {
 public:
-    ThreadData(pthread_t threadId) noexcept : threadId_(threadId), globalsThreadQueue_(GlobalsRegistry::Instance()) {}
+    ThreadData(pthread_t threadId) noexcept :
+        threadId_(threadId),
+        globalsThreadQueue_(GlobalsRegistry::Instance()),
+        state_(kRunnable) {}
 
     ~ThreadData() = default;
 
@@ -29,10 +33,15 @@ public:
 
     ThreadLocalStorage& tls() noexcept { return tls_; }
 
+    ThreadState state() noexcept { return state_; }
+
+    void setState(ThreadState state) noexcept { state_ = state; }
+
 private:
     const pthread_t threadId_;
     GlobalsRegistry::ThreadQueue globalsThreadQueue_;
     ThreadLocalStorage tls_;
+    ThreadState state_;
 };
 
 } // namespace mm
