@@ -53,8 +53,8 @@ mm::Allocator::Node::Node(const TypeInfo* typeInfo, uint32_t count) noexcept {
 
 ObjHeader* mm::Allocator::ThreadQueue::AllocateObject(const TypeInfo* typeInfo) noexcept {
     RuntimeAssert(!typeInfo->IsArray(), "Must not be an array");
-    uint32_t allocSize = sizeof(Node) + typeInfo->instanceSize_;
-    std::unique_ptr<Node> node(konanConstructSizedInstance<Node>(AlignUp(allocSize, kObjectAlignment)));
+    uint32_t allocSize = AlignUp(sizeof(Node) + typeInfo->instanceSize_, kObjectAlignment);
+    std::unique_ptr<Node> node(new (konanAllocMemory(allocSize)) Node(typeInfo));
     auto* object = node->GetObjHeader();
     InsertNode(std::move(node));
     return object;
@@ -63,8 +63,8 @@ ObjHeader* mm::Allocator::ThreadQueue::AllocateObject(const TypeInfo* typeInfo) 
 ArrayHeader* mm::Allocator::ThreadQueue::AllocateArray(const TypeInfo* typeInfo, uint32_t count) noexcept {
     RuntimeAssert(typeInfo->IsArray(), "Must be an array");
     // Note: array body is aligned, but for size computation it is enough to align the sum.
-    uint32_t allocSize = sizeof(Node) + AlignUp(sizeof(ArrayHeader) - typeInfo->instanceSize_ * count, kObjectAlignment);
-    std::unique_ptr<Node> node(konanConstructSizedInstance<Node>(AlignUp(allocSize, kObjectAlignment)));
+    uint32_t allocSize = AlignUp(sizeof(Node) + AlignUp(sizeof(ArrayHeader) - typeInfo->instanceSize_ * count, kObjectAlignment), kObjectAlignment);
+    std::unique_ptr<Node> node(new (konanAllocMemory(allocSize)) Node(typeInfo, count));
     auto* array = node->GetArrayHeader();
     InsertNode(std::move(node));
     return array;
