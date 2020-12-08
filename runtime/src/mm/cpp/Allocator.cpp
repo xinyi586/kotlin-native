@@ -24,7 +24,7 @@ ObjHeader* mm::Allocator::ThreadQueue::AllocateObject(const TypeInfo* typeInfo) 
     RuntimeAssert(!typeInfo->IsArray(), "Must not be an array");
     uint32_t allocSize = typeInfo->instanceSize_;
     auto& node = producer_.Insert(allocSize, kObjectAlignment);
-    auto* object = static_cast<ObjHeader*>(node.ExtraData());
+    auto* object = static_cast<ObjHeader*>(node.Data());
     object->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
     return object;
 }
@@ -34,7 +34,7 @@ ArrayHeader* mm::Allocator::ThreadQueue::AllocateArray(const TypeInfo* typeInfo,
     // Note: array body is aligned, but for size computation it is enough to align the sum.
     uint32_t allocSize = AlignUp(static_cast<uint32_t>(sizeof(ArrayHeader)) - typeInfo->instanceSize_ * count, kObjectAlignment);
     auto& node = producer_.Insert(allocSize, kObjectAlignment);
-    auto* array = static_cast<ArrayHeader*>(node.ExtraData());
+    auto* array = static_cast<ArrayHeader*>(node.Data());
     array->typeInfoOrMeta_ = const_cast<TypeInfo*>(typeInfo);
     array->count_ = count;
     return array;

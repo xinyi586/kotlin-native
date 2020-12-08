@@ -24,8 +24,8 @@ public:
     public:
         ~Node() = default;
 
-        // TODO: Consider adding destructors for extra data.
-        void* ExtraData() noexcept { return this + 1; }
+        // TODO: Consider adding destructors for the data.
+        void* Data() noexcept { return this + 1; }
 
     private:
         friend class HeterogeneousMultiSourceQueue;
@@ -43,8 +43,8 @@ public:
 
         ~Producer() { Publish(); }
 
-        Node& Insert(uint32_t extraDataSize, uint32_t extraDataAlignment) noexcept {
-            uint32_t allocSize = AlignUp(static_cast<uint32_t>(sizeof(Node)) + extraDataSize, extraDataAlignment);
+        Node& Insert(uint32_t dataSize, uint32_t dataAlignment) noexcept {
+            uint32_t allocSize = AlignUp(static_cast<uint32_t>(sizeof(Node)) + dataSize, dataAlignment);
             // TODO: Customize what allocator is used.
             std::unique_ptr<Node> node(new (konanAllocMemory(allocSize)) Node());
             auto* nodePtr = node.get();
