@@ -10,13 +10,13 @@
 
 #include "Alignment.hpp"
 #include "Alloc.h"
-#include "Mutex.hpp"
 #include "Utils.hpp"
 
 namespace kotlin {
 
 // A queue that is constructed by collecting subqueues from several `Producer`s.
 // TODO: Consider merging with `MultiSourceQueue` somehow.
+template <typename Mutex>
 class HeterogeneousMultiSourceQueue : private MoveOnly {
 public:
     // This class does not know its size at compile-time.
@@ -68,7 +68,7 @@ public:
                 return;
             }
 
-            std::lock_guard<SimpleMutex>(owner_.mutex_);
+            std::lock_guard<Mutex>(owner_.mutex_);
 
             if (!owner_.root_) {
                 RuntimeAssert(owner_.last_ == nullptr, "Unsynchronized root_ and last_");
@@ -126,7 +126,7 @@ public:
 
     private:
         HeterogeneousMultiSourceQueue& owner_; // weak
-        std::unique_lock<SimpleMutex> guard_;
+        std::unique_lock<Mutex> guard_;
     };
 
     // Lock `HeterogeneousMultiSourceQueue` for safe iteration.
@@ -154,7 +154,7 @@ private:
 
     std::unique_ptr<Node> root_;
     Node* last_ = nullptr;
-    SimpleMutex mutex_;
+    Mutex mutex_;
 };
 
 } // namespace kotlin

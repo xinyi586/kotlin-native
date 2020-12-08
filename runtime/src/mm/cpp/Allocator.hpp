@@ -10,6 +10,7 @@
 
 #include "HeterogeneousMultiSourceQueue.hpp"
 #include "Memory.h"
+#include "Mutex.hpp"
 #include "Utils.hpp"
 
 namespace kotlin {
@@ -27,11 +28,11 @@ public:
         void Publish() noexcept { producer_.Publish(); }
 
     private:
-        HeterogeneousMultiSourceQueue::Producer producer_;
+        HeterogeneousMultiSourceQueue<SimpleMutex>::Producer producer_;
     };
 
-    using Iterator = HeterogeneousMultiSourceQueue::Iterator;
-    using Iterable = HeterogeneousMultiSourceQueue::Iterable;
+    using Iterator = HeterogeneousMultiSourceQueue<SimpleMutex>::Iterator;
+    using Iterable = HeterogeneousMultiSourceQueue<SimpleMutex>::Iterable;
 
     static Allocator& Instance() noexcept;
 
@@ -43,7 +44,7 @@ private:
     Allocator() noexcept;
     ~Allocator();
 
-    HeterogeneousMultiSourceQueue allocations_;
+    HeterogeneousMultiSourceQueue<SimpleMutex> allocations_;
 };
 
 } // namespace mm
