@@ -8,6 +8,7 @@
 
 #include <mutex>
 
+#include "Alloc.h"
 #include "HeterogeneousMultiSourceQueue.hpp"
 #include "Memory.h"
 #include "Mutex.hpp"
@@ -16,8 +17,31 @@
 namespace kotlin {
 namespace mm {
 
+namespace internal {
+
+class KotlinObjectAllocator {
+public:
+    using value_type = void;
+    using is_always_equal = std::true_type;
+
+    void* allocate(size_t size) noexcept {
+        // TODO: Call into GC, if failed to allocate.
+        return konanAllocMemory(size);
+    }
+
+    void deallocate(void* ptr, size_t size) noexcept { konanFreeMemory(ptr); }
+
+    bool operator==(const KotlinObjectAllocator& rhs) const { return true; }
+
+    bool operator!=(const KotlinObjectAllocator& rhs) const { return false; }
+};
+
+} // namespace internal
+
 class Allocator : private Pinned {
 public:
+    using Storage = HeterogeneousMultiSourceQueue<SimpleMutex, internal::KotlinObjectAllocator>;
+
     class ThreadQueue : private MoveOnly {
     public:
         explicit ThreadQueue(Allocator& owner) noexcept : producer_(owner.allocations_) {}
@@ -28,11 +52,11 @@ public:
         void Publish() noexcept { producer_.Publish(); }
 
     private:
-        HeterogeneousMultiSourceQueue<SimpleMutex>::Producer producer_;
+        Storage::Producer producer_;
     };
 
-    using Iterator = HeterogeneousMultiSourceQueue<SimpleMutex>::Iterator;
-    using Iterable = HeterogeneousMultiSourceQueue<SimpleMutex>::Iterable;
+    using Iterator = Storage::Iterator;
+    using Iterable = Storage::Iterable;
 
     static Allocator& Instance() noexcept;
 
@@ -44,7 +68,7 @@ private:
     Allocator() noexcept;
     ~Allocator();
 
-    HeterogeneousMultiSourceQueue<SimpleMutex> allocations_;
+    Storage allocations_;
 };
 
 } // namespace mm

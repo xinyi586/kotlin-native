@@ -6,22 +6,32 @@
 #ifndef RUNTIME_HETEROGENEOUS_SOURCE_QUEUE_H
 #define RUNTIME_HETEROGENEOUS_SOURCE_QUEUE_H
 
+#include <memory>
 #include <mutex>
 
 #include "Alignment.hpp"
-#include "Alloc.h"
+#include "KAssert.h"
 #include "Utils.hpp"
 
 namespace kotlin {
 
 // A queue that is constructed by collecting subqueues from several `Producer`s.
 // TODO: Consider merging with `MultiSourceQueue` somehow.
-template <typename Mutex>
+template <typename Mutex, typename Allocator = std::allocator<void>>
 class HeterogeneousMultiSourceQueue : private MoveOnly {
+public:
+    class Node;
+
+private:
+    class NodeDeleter;
+    using NodeOwner = std::unique_ptr<Node, NodeDeleter>;
+
 public:
     // This class does not know its size at compile-time.
     class Node : private Pinned {
     public:
+        // Note: Do not construct the `Node` directly.
+        Node() noexcept = default;
         ~Node() = default;
 
         // TODO: Consider adding destructors for the data.
@@ -30,23 +40,21 @@ public:
     private:
         friend class HeterogeneousMultiSourceQueue;
 
-        Node() noexcept = default;
-
-        std::unique_ptr<Node> next_;
+        NodeOwner next_ = nullptr;
         // There's some more data of an unknown (at compile-time) size here, but it cannot be represented
         // with C++ members.
     };
 
     class Producer : private MoveOnly {
     public:
-        explicit Producer(HeterogeneousMultiSourceQueue& owner) noexcept : owner_(owner) {}
+        explicit Producer(HeterogeneousMultiSourceQueue& owner) noexcept : Producer(owner, Allocator()) {}
+        Producer(HeterogeneousMultiSourceQueue& owner, const Allocator& allocator) noexcept : owner_(owner), allocator_(allocator) {}
+        Producer(HeterogeneousMultiSourceQueue& owner, Allocator&& allocator) noexcept : owner_(owner), allocator_(std::move(allocator)) {}
 
         ~Producer() { Publish(); }
 
         Node& Insert(size_t dataSize, size_t dataAlignment) noexcept {
-            size_t allocSize = AlignUp(sizeof(Node) + dataSize, dataAlignment);
-            // TODO: Customize what allocator is used.
-            std::unique_ptr<Node> node(new (konanAllocMemory(allocSize)) Node());
+            auto node = MakeNode(dataSize, dataAlignment);
             auto* nodePtr = node.get();
             if (!root_) {
                 root_ = std::move(node);
@@ -87,8 +95,17 @@ public:
     private:
         friend class HeterogeneousMultiSourceQueue;
 
+        NodeOwner MakeNode(size_t dataSize, size_t dataAlignment) noexcept {
+            size_t allocSize = AlignUp(sizeof(Node) + dataSize, dataAlignment);
+            auto* nodePtr = static_cast<Node*>(std::allocator_traits<Allocator>::allocate(allocator_, allocSize));
+            std::allocator_traits<Allocator>::construct(allocator_, nodePtr);
+            NodeOwner node(nodePtr, NodeDeleter(allocator_, allocSize));
+            return node;
+        }
+
         HeterogeneousMultiSourceQueue& owner_; // weak
-        std::unique_ptr<Node> root_;
+        Allocator allocator_;
+        NodeOwner root_;
         Node* last_ = nullptr;
     };
 
@@ -133,6 +150,29 @@ public:
     Iterable Iter() noexcept { return Iterable(*this); }
 
 private:
+    class NodeDeleter {
+    public:
+        NodeDeleter() noexcept = default;
+
+        NodeDeleter(const Allocator& allocator, size_t size) noexcept : custom_(true), allocator_(allocator), size_(size) {
+            RuntimeAssert(allocator_ == allocator, "NodeDeleter allocator must be able to delete what was allocated");
+        }
+
+        void operator()(Node* node) noexcept {
+            if (custom_) {
+                std::allocator_traits<Allocator>::destroy(allocator_, node);
+                std::allocator_traits<Allocator>::deallocate(allocator_, node, size_);
+            } else {
+                delete node;
+            }
+        }
+
+    private:
+        bool custom_ = false;
+        Allocator allocator_;
+        size_t size_;
+    };
+
     // Expects `mutex_` to be held by the current thread.
     void EraseUnsafe(Node* previousNode) noexcept {
         if (previousNode == nullptr) {
@@ -152,7 +192,7 @@ private:
         }
     }
 
-    std::unique_ptr<Node> root_;
+    NodeOwner root_;
     Node* last_ = nullptr;
     Mutex mutex_;
 };
