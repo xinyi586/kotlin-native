@@ -43,8 +43,8 @@ public:
 
         ~Producer() { Publish(); }
 
-        Node& Insert(uint32_t dataSize, uint32_t dataAlignment) noexcept {
-            uint32_t allocSize = AlignUp(static_cast<uint32_t>(sizeof(Node)) + dataSize, dataAlignment);
+        Node& Insert(size_t dataSize, size_t dataAlignment) noexcept {
+            size_t allocSize = AlignUp(sizeof(Node) + dataSize, dataAlignment);
             // TODO: Customize what allocator is used.
             std::unique_ptr<Node> node(new (konanAllocMemory(allocSize)) Node());
             auto* nodePtr = node.get();

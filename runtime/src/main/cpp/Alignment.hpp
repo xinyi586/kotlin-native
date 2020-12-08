@@ -6,10 +6,11 @@
 #ifndef RUNTIME_ALIGNMENT_H
 #define RUNTIME_ALIGNMENT_H
 
+#include <cstddef>
+
 namespace kotlin {
 
-template <typename T>
-T AlignUp(T size, T alignment) {
+constexpr inline size_t AlignUp(size_t size, size_t alignment) {
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
