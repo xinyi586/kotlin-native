@@ -9,6 +9,7 @@
 #include <mutex>
 
 #include "Alignment.hpp"
+#include "Alloc.h"
 #include "Mutex.hpp"
 #include "Utils.hpp"
 
@@ -43,7 +44,8 @@ public:
         ~Producer() { Publish(); }
 
         Node& Insert(uint32_t extraDataSize, uint32_t extraDataAlignment) noexcept {
-            uint32_t allocSize = AlignUp(sizeof(Node) + extraDataSize, extraDataAlignment);
+            uint32_t allocSize = AlignUp(static_cast<uint32_t>(sizeof(Node)) + extraDataSize, extraDataAlignment);
+            // TODO: Customize what allocator is used.
             std::unique_ptr<Node> node(new (konanAllocMemory(allocSize)) Node());
             auto* nodePtr = node.get();
             if (!root_) {
